@@ -8,9 +8,9 @@ import {
 import { dip, px, percent } from "../core/view";
 
 import { Color } from "../../color";
-import { Font, parseFont, FontStyle, FontWeight } from "./font";
+import { Font, parseFont, FontStyle, FontWeight } from "../../ui/styling/font";
 import { layout } from "../../utils/utils";
-import { Background } from "./background";
+import { Background } from "../../ui/styling/background";
 import { isIOS } from "../../platform";
 
 import { Style } from "./style";
@@ -568,6 +568,33 @@ export const backgroundColorProperty = new CssAnimationProperty<Style, Color>({
     }, equalityComparer: Color.equals, valueConverter: (value) => new Color(value)
 });
 backgroundColorProperty.register(Style);
+
+export const backgroundProperty = new ShorthandProperty<Style, string | Color>({
+    name: "background",
+    cssName: "background",
+    getter(this: Style) {
+        return `${this.backgroundInternal.color}`; // Or gradient
+    },
+    converter(value: string | Color) {
+        if (typeof value === "string") {
+            let tokens = value.split(/\s+/)
+            try {
+                const color = new Color(value);
+                return [
+                    [backgroundColorProperty, color]
+                ];
+            } catch(e) {
+                // Try parse gradient
+                throw new Error(`Value '${value}' can not be converted to background.`);
+            }
+        } else if (value instanceof Color) {
+            return [
+                [backgroundColorProperty, value]
+            ];
+        }
+    }
+});
+backgroundProperty.register(Style);
 
 export type BackgroundRepeat = "repeat" | "repeat-x" | "repeat-y" | "no-repeat";
 export namespace BackgroundRepeat {

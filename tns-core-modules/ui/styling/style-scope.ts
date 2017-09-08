@@ -9,6 +9,11 @@ import {
     Node as CssNode,
 } from "../../css";
 import {
+    CSS3Parser,
+    CSSNativeScript
+} from "../../css/parser";
+
+import {
     RuleSet,
     SelectorsMap,
     SelectorCore,
@@ -63,16 +68,19 @@ class CSSSource {
     private static cssFilesCache: { [path: string]: CSSSource } = {};
 
     private constructor(private _url: string, private _file: string, private _keyframes: KeyframesMap, private _source?: string) {
-        if (this._file && !this._source) {
-            this.load();
-        }
         this.parse();
     }
 
     public static fromFile(url: string, keyframes: KeyframesMap): CSSSource {
+        const file = CSSSource.resolveCSSPathFromURL(url);
+        return new CSSSource(url, file, keyframes, undefined);
+    }
+
+    @profile
+    public static resolveCSSPathFromURL(url: string): string {
         const app = knownFolders.currentApp().path;
         const file = resolveFileNameFromUrl(url, app, File.exists);
-        return new CSSSource(url, file, keyframes, undefined);
+        return file;
     }
 
     public static fromSource(source: string, keyframes: KeyframesMap, url?: string): CSSSource {
@@ -90,21 +98,45 @@ class CSSSource {
 
     @profile
     private parse(): void {
-        if (this._source) {
-            try {
-                this._ast = this._source ? parseCss(this._source, { source: this._file }) : null;
-                // TODO: Don't merge arrays, instead chain the css files.
-                if (this._ast) {
-                    this._selectors = [
-                        ...this.createSelectorsFromImports(),
-                        ...this.createSelectorsFromSyntaxTree()
-                    ];
-                }
-            } catch (e) {
-                traceWrite("Css styling failed: " + e, traceCategories.Error, traceMessageType.error);
+        try {
+            if (this._file && !this._source) {
+                this.load();
             }
-        } else {
+            if (this._source) {
+                this.parseCSSAst();
+                this.createSelectors();
+            } else {
+                this._selectors = [];
+            }
+        } catch (e) {
+            traceWrite("Css styling failed: " + e, traceCategories.Error, traceMessageType.error);
             this._selectors = [];
+        }
+    }
+
+    @profile
+    private parseCSSAst() {
+        if (this._source) {
+            const useInHouseParser = true;
+            if (useInHouseParser) {
+                const cssparser = new CSS3Parser(this._source);
+                const stylesheet = cssparser.parseAStylesheet();
+                const cssNS = new CSSNativeScript();
+                this._ast = cssNS.parseStylesheet(stylesheet);
+            } else {
+                this._ast = parseCss(this._source, { source: this._file });
+            }
+        }
+    }
+
+    @profile
+    private createSelectors() {
+        // TODO: Don't merge arrays, instead chain the css files.
+        if (this._ast) {
+            this._selectors = [
+                ...this.createSelectorsFromImports(),
+                ...this.createSelectorsFromSyntaxTree()
+            ];
         }
     }
 

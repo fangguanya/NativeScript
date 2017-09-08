@@ -148,9 +148,6 @@ allTests["VISUAL-STATE"] = visualStateTests;
 import * as valueSourceTests from "./ui/styling/value-source-tests";
 allTests["VALUE-SOURCE"] = valueSourceTests;
 
-import * as cssSelectorParserTests from "./ui/styling/css-selector-parser";
-allTests["CSS-SELECTOR-PARSER"] = cssSelectorParserTests;
-
 import * as cssSelectorTests from "./ui/styling/css-selector";
 allTests["CSS-SELECTOR"] = cssSelectorTests;
 
